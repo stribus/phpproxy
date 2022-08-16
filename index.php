@@ -1,58 +1,31 @@
 <?php 
 
-    //pega o conteudo do body
-    $body = file_get_contents('php://input');
+require __DIR__ . '/vendor/autoload.php'; 
 
-    $requestUri = $_SERVER['REQUEST_URI'];
-    $httpPos = strpos($requestUri, 'http');
-    $ishttps = strpos($requestUri, 'https')>0;
-    $url = substr($requestUri, $httpPos, strlen($requestUri)-$httpPos);
-    $url = strtr($url, array('http//'=>'http://', 'https//'=>'https://'));
-    // print_r($url);
-    // var_dump(getallheaders());
+use Proxy\Proxy;
+use Proxy\Adapter\Guzzle\GuzzleAdapter;
+use Proxy\Filter\RemoveEncodingFilter;
+use Laminas\Diactoros\ServerRequestFactory;
 
-    $headers = getallheaders();
-    //pega  o verbo do request
-    $verb = $_SERVER['REQUEST_METHOD'];
+// Create a PSR7 request based on the current browser request.
+$request = ServerRequestFactory::fromGlobals();
 
-    //carrega dados do site $url
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-    curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-    switch ($verb) {
-        case 'GET':
-            curl_setopt($ch, CURLOPT_HTTPGET, true);
-            break;
-        case 'POST':
-            curl_setopt($ch, CURLOPT_POST, true);
-            //curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
-            break;
-        case 'PUT':
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
-            //curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
-            break;
-        case 'DELETE':
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
-            //curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
-            break;
-        default:
-            break;
-    }
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
-   
-    
-    $output = curl_exec($ch);   
+// Create a guzzle client
+$guzzle = new GuzzleHttp\Client();
 
-    if(curl_exec($ch) === false)
-    {
-        echo 'Curl error: ' . curl_error($ch);
-    }
+// Create the proxy instance
+$proxy = new Proxy(new GuzzleAdapter($guzzle));
 
-    echo $output;
+// Add a response filter that removes the encoding headers.
+$proxy->filter(new RemoveEncodingFilter());
 
-    curl_close($ch);
+try {
+    // Forward the request and get the response.
+    $response = $proxy->forward($request)->to('https://reqbin.com/echo/post/xml');
+
+    // Output response to the browser.
+    (new Laminas\HttpHandlerRunner\Emitter\SapiEmitter)->emit($response);
+} catch(\GuzzleHttp\Exception\BadResponseException $e) {
+    // Correct way to handle bad responses
+    (new Laminas\HttpHandlerRunner\Emitter\SapiEmitter)->emit($e->getResponse());
+}
