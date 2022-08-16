@@ -22,10 +22,29 @@
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
     curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-//curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-//curl_setopt($ch, CURLOPT_HEADER, 1);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    switch ($verb) {
+        case 'GET':
+            curl_setopt($ch, CURLOPT_HTTPGET, true);
+            break;
+        case 'POST':
+            curl_setopt($ch, CURLOPT_POST, true);
+            //curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+            break;
+        case 'PUT':
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+            //curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+            break;
+        case 'DELETE':
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
+            //curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+            break;
+        default:
+            break;
+    }
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+   
     
     $output = curl_exec($ch);   
 
